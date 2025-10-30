@@ -1,0 +1,11 @@
+[project]
+name = "my-project"
+version = "0.1.0"
+description = "A sample project using uv"
+requires-python = ">=3.12"
+dependencies = [
+    "ruff",
+    "pygame",
+    "pyyaml",
+    "numpy",
+]
