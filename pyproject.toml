@@ -1,11 +1,15 @@
 [project]
-name = "my-project"
+name = "swarmy"
 version = "0.1.0"
-description = "A sample project using uv"
-requires-python = ">=3.12"
+description = "Swarm robotics simulation"
+requires-python = ">=3.13"
 dependencies = [
-    "ruff",
     "pygame",
     "pyyaml",
     "numpy",
+]
+
+[tool.uv]
+dev-dependencies = [
+    "ruff",
 ]
