@@ -3,8 +3,8 @@
 
 ## Get started
 Run `python3 workspace.py` to start the simulator. By default you are able control one robot using the arrow-keys. 
-Use the `config.yaml` to set parameters such as size of the enviornment or the number of agens.
- To implement your own controllers, you can use the template in `my_controller.py` which overwrites the abstract method of the swarmy internal Actuation class. To implement your own sensors, you can use the template in `my_sensors.py` which overwrites the abstract method of the swarmy internal perception class. Static objects, like walls, or dynamic objects in the environment should be implemented in `my_world.py` which overwrites the abstract method of swarmys internal environment class. In the course of the exercises, different worlds, controllers or sensors may be tested. In particular, different types of sensors are used at the same time. To keep it well organized, it is highly recommended to implement a separate class for each controller, world and sensor and to import the classes you want to use in the respective runs in `workspace.py`.
+Use the `config.yaml` to set parameters such as size of the environment or the number of agents.
+ To implement your own controllers, you can use the template in `my_controller.py` which overwrites the abstract method of the swarmy internal Actuation class. To implement your own sensors, you can use the template in `my_sensors.py` which overwrites the abstract method of the swarmy internal perception class. Static objects, like walls, or dynamic objects in the environment should be implemented in `my_world.py` which overwrites the abstract method of swarmy's internal environment class. In the course of the exercises, different worlds, controllers or sensors may be tested. In particular, different types of sensors are used at the same time. To keep it well organized, it is highly recommended to implement a separate class for each controller, world and sensor and to import the classes you want to use in the respective runs in `workspace.py`.
  
 Don't forget to import your implemented sensors, world and controller to `workspace.py`:
 

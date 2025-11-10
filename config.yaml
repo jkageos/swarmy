@@ -1,26 +1,36 @@
 
 #Simulation parameters
 FPS: 60 # Frames per second. A typical value is 60 frames per seconds
-max_timestep: 2000 # Maximum number of timesteps for the simulation
-## World parameters
-world_width: 500
-world_height: 500
-background_color: !!python/tuple [255, 255, 255]
+max_timestep: 2000 # Maximum number of time steps for the simulation
 
+## World parameters
+world_width: 600
+world_height: 600
+background_color: [255, 255, 255]
 
 ## Robot parameters
 number_of_agents: 10
 default_velocity: 2           # choose even number
 default_angle_velocity: 2     # choose even number
 save_trajectory: 0
+
 ## Controller ratios if different controllers are used for different robots
 #Example: If there are 6 robots and the first three robots uses controller_1 and the last three robots uses controller_2, then the controller_ratios will be 50% and 50% of the swarm:
 #controller_1 : 0.5
 #controller_2 : 0.5
-
 controller_1 : 1
 controller_2 : 0
 
-
-#  options ...
+# Rendering options
+# 1 = full rendering (slowest, good for visualization)
+# 0 = headless with black screen (faster, good for data collection)
+# -1 = no display (fastest, best for batch experiments)
 rendering : 1
+
+# Optional scalability tweaks
+draw_bumpers: 1          # 0 disables bumper line rendering
+spatial_cell_size: 80    # size of spatial hash cells
+escape_turn_frames: 6
+escape_reverse_min: 4
+escape_reverse_max: 7
+max_stuck_frames: 30
