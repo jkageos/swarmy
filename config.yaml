@@ -1,18 +1,24 @@
-
 #Simulation parameters
 FPS: 60 # Frames per second. A typical value is 60 frames per seconds
 max_timestep: 2000 # Maximum number of time steps for the simulation
 
 ## World parameters
-world_width: 600
+world_width: 800
 world_height: 600
 background_color: [255, 255, 255]
 
 ## Robot parameters
-number_of_agents: 10
+number_of_agents: 5
 default_velocity: 2           # choose even number
 default_angle_velocity: 2     # choose even number
-save_trajectory: 0
+save_trajectory: 1
+
+## Braitenberg parameters
+braitenberg_behavior: "fear"  # Options: "aggressor", "fear"
+sensor_offset: 15.0            # Distance from robot center to sensors (pixels)
+sensor_angle: 45.0             # Angle offset for sensors (degrees)
+motor_gain: 5.0                # Proportionality constant for sensor -> wheel velocity
+turn_constant: 3             # Constant c for heading change: Δφ = c(v_r - v_l)
 
 ## Controller ratios if different controllers are used for different robots
 #Example: If there are 6 robots and the first three robots uses controller_1 and the last three robots uses controller_2, then the controller_ratios will be 50% and 50% of the swarm:

@@ -12,16 +12,19 @@ from swarmy.experiment import Experiment
 with open("config.yaml", "r") as file:
     config = yaml.load(file, Loader=yaml.FullLoader)
 ## Import your implementation of the controller, sensor, environment and agent
-from agent.my_agent import MyAgent
-from controller.my_controller import MyController
+
+# Use the Task 1.2 implementations (Braitenberg vehicles)
+from agent.task1_agent import MyAgent
+from controller.task1_2_controller import BraitenbergController
 from sensors.bumper_sensor import BumperSensor
-from world.my_world import My_environment
+from sensors.task1_2_sensor import DualLightSensor
+from world.task1_world import Task1World
 
 # add your controller, if you have more than one controller, add them to the list and specify the percentage of robots that should use this controller in the config.yaml file
-agent_controller = [MyController]
+agent_controller = [BraitenbergController]
 # add your sensors, if you have more than one sensor, add them to the list all sensors are added to each robot
-agent_sensing = [BumperSensor]
+agent_sensing = [BumperSensor, DualLightSensor]
 
-exp1 = Experiment(config, agent_controller, agent_sensing, My_environment, MyAgent)
+exp1 = Experiment(config, agent_controller, agent_sensing, Task1World, MyAgent)
 
 exp1.run(1)
