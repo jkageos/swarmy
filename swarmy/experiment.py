@@ -20,26 +20,33 @@ The parameters for the simulation are:
 # =============================================================================
 import pygame
 import random
-import itertools
-import numpy as np
-
-
+import sys
+sys.path.insert(0, '..')  # add parent directory to path
 # import internal object classes
-from .environment import Environment
-from .item import Obstacle, Item
-from .agent import Agent
+#from .environment import Environment
+#from world.my_world import my_environment
+##from .item import Obstacle
+##from .agent import Agent
 
 # =============================================================================
 # Class
 # =============================================================================
 class Experiment():
     
-    def __init__(self):
+    def __init__(self, config, agent_controller, agent_sensing, world, agent):
         super(Experiment, self).__init__()
-        # kommentare 
+
+        self.config = config
+        self.agent_controller = agent_controller
+        self.agent_sensing = agent_sensing
+        self.world = world(config)
+        self.agent = agent
+        
+
+
 
         
-    def run(self, rendering=1, swarm_size=1, controllers=["avoid"], track=False, n_items=1, save_file_name=None):
+    def run(self, rendering):
         """
         Start swarm simulation expermiment
         
@@ -47,8 +54,8 @@ class Experiment():
             rendering               (int):   1 = show simulation; -1 = hide simulation; 0 = black screen (capture mode)           
         """
         # pygame presets
-        pygame.init()  					        # initialize pygame
-        running = True  				        # termination condition
+        pygame.init() 					        # initialize pygame
+        running = True   				        # termination condition
             
         # tracking variable
         timesteps_counter = 0
@@ -57,60 +64,33 @@ class Experiment():
         # instantiations
 
         # instantiate environment
-        environment = Environment(rendering) 
-        w = environment.width
-        h = environment.height
-        
-        # instatiate obstacles
-        # TODO add obstacles here
-        obstacleList = []
-        # create walls
-        left_wall = Obstacle(environment, 10, h/2, 20, h, 3)
-        right_wall = Obstacle(environment, w-10, h / 2, 20, h, 3)
-
-        top_wall = Obstacle(environment, w/2, 10, w, 20, 3)
-        bot_wall = Obstacle(environment, w/2, h-10, w, 20, 3)
-
-        # TODO add back in for tasksheet 3
-        # obstacle1 = Obstacle(environment, w/2, h/2, 20, 300, 3)
-        # obstacleList.append(obstacle1)
-
-        obstacleList.append(left_wall)
-        obstacleList.append(right_wall)
-        obstacleList.append(top_wall)
-        obstacleList.append(bot_wall)
+        environment = self.world
+        environment.render_init()
 
         # instatiate agent
-        agent_list = []
-        for i in range(swarm_size):
-            agent_list.append(Agent([random.randint(30, w-30), random.randint(30, h-30)], 0, environment, i, controllers[i], track))  #  random.randint(0, 360)
-
-
-        item_list = []
-        for i in range(n_items):
-            item_list.append(Item(environment, random.randint(100, w-100), random.randint(100, h-100), 30, 30, 15))
-    
+        agentList = []
+        agent_counter = 0
+        controller_counter = 0
+        while agent_counter <self.config['number_of_agents']:
+            if agent_counter/self.config['number_of_agents'] >= self.config['controller_1']:
+                controller_counter = 1
+            newAgent = self.agent(environment,self.agent_controller[controller_counter],self.agent_sensing, self.config)
+            newAgent.initial_position()
+            newAgent.unique_id = agent_counter
+            agentList.append(newAgent)
+            agent_counter +=1
+        environment.agentlist = agentList
         # -----------------------------------------------------------------------------
         # initializations
-        for i in range(swarm_size):
-            agent_list[i].body.helperLUT()
-        # newAgent.body.helperLUT()   # global lookup table needs to be calculated only once
-        ##print("Range: " + str(agentList[0].nesting.communication.BROADCASTING_RANGE_MM))
-
-        # update after all agents were instantiated
-        #newAgent.perception.helperOAO()  # update other agents list and obstacles list
-
-
-        # tracking the position of the objects
-        save_path = "measurements/" + str(save_file_name) + ".npy"
-        save_data = None
+        if agentList:
+            agentList[0].body.helperLUT()    # global lookup table needs to be calculated only once
 
         # =============================================================================
         # Run experiment: Loop-Processing
         # =============================================================================
-        while running:
+        while running and timesteps_counter < self.config["max_timestep"]:
             timesteps_counter += 1
-            print(timesteps_counter)
+
             
             #-----------------------------------------------------------------------------
             # ASYNCHRON 
@@ -130,55 +110,33 @@ class Experiment():
                 # Check for QUIT event. If QUIT, then set running to false.
                 elif event.type == pygame.QUIT:
                     running = False
-
-            # exit condition;
-            if timesteps_counter > 20000:
-                running = False
      
             #-----------------------------------------------------------------------------
             # SYNCHRON         
-     
+            for agent in agentList:
+                environment.agent_object_list.append(
+                    pygame.Rect(agent.actuation.position[0] - 15, agent.actuation.position[1] - 15, 30, 30))
             # update agents
-            idx = np.random.permutation(swarm_size)
-            for i in idx:
-                agent_list[i].processing.perform(pressedKeys)
+            for newAgent in agentList:
+                newAgent.processing.perform(pressedKeys)
+                #pygame.Rect(5, self.config['world_height'] - 10, self.config['world_width'] - 10, 5)
 
-            # track items
-            save_data_tmp = np.zeros((1, 1+2*n_items))
-            save_data_tmp[0, 0] = timesteps_counter
-            for i in range(n_items):
-                # x
-                save_data_tmp[0, (i*2)+1] = item_list[i].rect.centerx
-                # y
-                save_data_tmp[0, (i + 1) * 2] = item_list[i].rect.centery
-            if save_data is None:
-                save_data = save_data_tmp
-            else:
-                save_data = np.concatenate((save_data, save_data_tmp), axis=0)
-
-            # reset bodies of the robots
-            environment.resetDynamicObstacles()
-
-            # newAgent.processing.perform(pressedKeys)
-            # Torus
-            #newAgent.actuation.position[0] = newAgent.actuation.position[0] % environment.width
-            #newAgent.actuation.position[1] = newAgent.actuation.position[1] % environment.height
 
             # display results
             if(rendering == 1):
-                for i in range(swarm_size):
-                    agent_list[i].body.render()
-                for i in range(n_items):
-                    item_list[i].render()
-                # newAgent.body.render()         # update agent body
-                environment.render()           # update content on display        
+                for newAgent in agentList:
+                    newAgent.body.render()         # update agent bod
+                environment.render()           # update content on display
+
+            environment.agent_object_list = []
+        if self.config['save_trajectory']:
+            for i,agent in enumerate(agentList):
+                if i == len(agentList)-1:
+                    agent.save_information(True)
+                else:
+                    agent.save_information(False)
 
 
-        # save tracked data
-        with open(save_path, 'wb') as f:
-            np.save(f, save_data)
-
-
+        print('Experiment finished by manual stopping or maximum timesteps reached. Check config.yaml to increase the maximum timesteps.')
         pygame.quit()
-
         return None
