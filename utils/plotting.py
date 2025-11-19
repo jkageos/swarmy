@@ -10,10 +10,12 @@ matplotlib.use("Agg")  # set backend before importing pyplot
 import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.collections import LineCollection
-from matplotlib.patches import Circle
+from matplotlib.patches import Circle, Rectangle
 
 
-def plot_trajectory(trajectory, agent_id, config, light_source=None, save_path="plots"):
+def plot_trajectory(
+    trajectory, agent_id, config, light_source=None, walls=None, save_path="plots"
+):
     """
     Plot a single agent's trajectory on the toroidal world.
 
@@ -22,6 +24,7 @@ def plot_trajectory(trajectory, agent_id, config, light_source=None, save_path="
         agent_id (int): Unique identifier for the agent
         config (dict): Configuration dictionary with world dimensions
         light_source (tuple): Optional (x, y, radius) for light source visualization
+        walls (list): Optional list of wall rectangles from environment
         save_path (str): Directory to save the plot
     """
     if not trajectory:
@@ -37,6 +40,32 @@ def plot_trajectory(trajectory, agent_id, config, light_source=None, save_path="
 
     # Create figure
     fig, ax = plt.subplots(figsize=(10, 8))
+
+    # Draw walls/obstacles first (so they're in the background)
+    if walls:
+        for wall_data in walls:
+            color_name = wall_data[0]
+            rect = wall_data[1]  # pygame.Rect object
+
+            # Convert color names to matplotlib colors
+            if color_name == "BLACK":
+                mpl_color = "black"
+            elif color_name == "RED":
+                mpl_color = "red"
+            else:
+                mpl_color = "gray"
+
+            # Draw rectangle
+            patch = Rectangle(
+                (rect.x, rect.y),
+                rect.width,
+                rect.height,
+                linewidth=1,
+                edgecolor=mpl_color,
+                facecolor=mpl_color,
+                alpha=0.7,
+            )
+            ax.add_patch(patch)
 
     if len(trajectory) >= 2:
         # Ensure float dtype and proper shape (N-1, 2, 2)
@@ -71,8 +100,10 @@ def plot_trajectory(trajectory, agent_id, config, light_source=None, save_path="
     ax.set_ylim(0, config["world_height"])
     ax.set_xlabel("X Position (pixels)", fontsize=12)
     ax.set_ylabel("Y Position (pixels)", fontsize=12)
+
+    world_type = "Bounded World with Walls" if walls else "Toroidal World"
     ax.set_title(
-        f"Agent {agent_id} Trajectory (Toroidal World)\n{len(trajectory)} timesteps",
+        f"Agent {agent_id} Trajectory ({world_type})\n{len(trajectory)} timesteps",
         fontsize=14,
     )
     ax.legend(loc="upper right")
@@ -152,7 +183,9 @@ def plot_light_distribution(config, world, save_path="plots"):
     plt.close()
 
 
-def plot_all_trajectories(agent_list, config, light_source=None, save_path="plots"):
+def plot_all_trajectories(
+    agent_list, config, light_source=None, walls=None, save_path="plots"
+):
     """
     Plot all agent trajectories on a single figure.
 
@@ -160,11 +193,41 @@ def plot_all_trajectories(agent_list, config, light_source=None, save_path="plot
         agent_list (list): List of agent objects with trajectory attribute
         config (dict): Configuration dictionary
         light_source (tuple): Optional (x, y, radius) for light source
+        walls (list): Optional list of wall rectangles from environment
         save_path (str): Directory to save the plot
     """
     Path(save_path).mkdir(parents=True, exist_ok=True)
 
     fig, ax = plt.subplots(figsize=(12, 9))
+
+    # Draw walls/obstacles first (background layer)
+    if walls:
+        for wall_data in walls:
+            color_name = wall_data[0]
+            rect = wall_data[1]  # pygame.Rect object
+
+            # Convert color names to matplotlib colors
+            if color_name == "BLACK":
+                mpl_color = "black"
+                label = "Boundary walls"
+            elif color_name == "RED":
+                mpl_color = "red"
+                label = "Internal walls"
+            else:
+                mpl_color = "gray"
+                label = "Walls"
+
+            # Draw rectangle
+            patch = Rectangle(
+                (rect.x, rect.y),
+                rect.width,
+                rect.height,
+                linewidth=1,
+                edgecolor=mpl_color,
+                facecolor=mpl_color,
+                alpha=0.7,
+            )
+            ax.add_patch(patch)
 
     # Replace attribute access with get_cmap to satisfy type checkers and older Matplotlib
     cmap = plt.cm.get_cmap(
@@ -213,7 +276,9 @@ def plot_all_trajectories(agent_list, config, light_source=None, save_path="plot
     ax.set_ylim(0, config["world_height"])
     ax.set_xlabel("X Position (pixels)", fontsize=12)
     ax.set_ylabel("Y Position (pixels)", fontsize=12)
-    ax.set_title("All Agent Trajectories (Toroidal World)", fontsize=14)
+
+    world_type = "Bounded World with Walls" if walls else "Toroidal World"
+    ax.set_title(f"All Agent Trajectories ({world_type})", fontsize=14)
     ax.legend(loc="upper right", fontsize=9)
     ax.grid(True, alpha=0.3)
     ax.set_aspect("equal")

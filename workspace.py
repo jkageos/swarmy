@@ -13,18 +13,17 @@ with open("config.yaml", "r") as file:
     config = yaml.load(file, Loader=yaml.FullLoader)
 ## Import your implementation of the controller, sensor, environment and agent
 
-# Use the Task 1.2 implementations (Braitenberg vehicles)
-from agent.task1_agent import MyAgent
-from controller.task1_2_controller import BraitenbergController
-from sensors.bumper_sensor import BumperSensor
-from sensors.task1_2_sensor import DualLightSensor
-from world.task1_world import Task1World
+# Task 2: Rule-based navigation with proximity sensors
+from agent.task2_agent import Task2Agent
+from controller.task2_controller import RuleBasedController
+from sensors.task2_sensor import ProximitySensor
+from world.task2_world import Task2World
 
-# add your controller, if you have more than one controller, add them to the list and specify the percentage of robots that should use this controller in the config.yaml file
-agent_controller = [BraitenbergController]
-# add your sensors, if you have more than one sensor, add them to the list all sensors are added to each robot
-agent_sensing = [BumperSensor, DualLightSensor]
+# add your controller
+agent_controller = [RuleBasedController]
+# add your sensors
+agent_sensing = [ProximitySensor]
 
-exp1 = Experiment(config, agent_controller, agent_sensing, Task1World, MyAgent)
+exp1 = Experiment(config, agent_controller, agent_sensing, Task2World, Task2Agent)
 
 exp1.run(1)

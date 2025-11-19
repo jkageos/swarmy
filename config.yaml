@@ -4,7 +4,7 @@ max_timestep: 2000 # Maximum number of time steps for the simulation
 
 ## World parameters
 world_width: 800
-world_height: 600
+world_height: 800
 background_color: [255, 255, 255]
 
 ## Robot parameters
@@ -19,6 +19,9 @@ sensor_offset: 15.0            # Distance from robot center to sensors (pixels)
 sensor_angle: 45.0             # Angle offset for sensors (degrees)
 motor_gain: 5.0                # Proportionality constant for sensor -> wheel velocity
 turn_constant: 5             # Constant c for heading change: Δφ = c(v_r - v_l)
+
+## Task 2 Proximity Sensor parameters
+draw_proximity_sensors: 1     # 1 = visualize sensors, 0 = hide
 
 ## Controller ratios if different controllers are used for different robots
 #Example: If there are 6 robots and the first three robots uses controller_1 and the last three robots uses controller_2, then the controller_ratios will be 50% and 50% of the swarm:
