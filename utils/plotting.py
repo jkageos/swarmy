@@ -174,7 +174,7 @@ def plot_light_distribution(config, world, save_path="plots"):
     ax.legend(loc="upper right")
 
     # Colorbar
-    cbar = plt.colorbar(contour, ax=ax, label="Light Intensity")
+    plt.colorbar(contour, ax=ax, label="Light Intensity")
 
     # Save
     filename = f"{save_path}/light_distribution.png"
@@ -209,13 +209,10 @@ def plot_all_trajectories(
             # Convert color names to matplotlib colors
             if color_name == "BLACK":
                 mpl_color = "black"
-                label = "Boundary walls"
             elif color_name == "RED":
                 mpl_color = "red"
-                label = "Internal walls"
             else:
                 mpl_color = "gray"
-                label = "Walls"
 
             # Draw rectangle
             patch = Rectangle(
