@@ -1,7 +1,5 @@
 import random
 
-import pygame
-
 from swarmy.agent import Agent
 
 
@@ -33,7 +31,7 @@ class MyAgent(Agent):
                 )
 
                 behavior = self.config.get("braitenberg_behavior", "unknown")
-                save_path = f"plots/{behavior}"
+                save_path = f"plots/task1/{behavior}"
 
                 print(
                     f"\n=== Generating plots for {len(self.environment.agentlist)} agents ({behavior}) ==="
