@@ -285,3 +285,85 @@ def plot_all_trajectories(
     plt.savefig(filename, dpi=150, bbox_inches="tight")
     print(f"Saved combined trajectory plot: {filename}")
     plt.close()
+
+
+def plot_task4_trajectory(
+    trajectory, agent_id, run_id, config, walls=None, save_path="plots/task4"
+):
+    """
+    Plot a single agent's trajectory for Task 4, including run index in filename and title.
+
+    Args:
+        trajectory (list): List of (x, y, gamma) tuples
+        agent_id (int): Unique identifier for the agent
+        run_id (int): Run index
+        config (dict): Configuration dictionary with world dimensions
+        walls (list): Optional list of wall rectangles from environment
+        save_path (str): Directory to save the plot
+    """
+    if not trajectory:
+        print(f"Agent {agent_id}, Run {run_id}: No trajectory data to plot")
+        return
+
+    from pathlib import Path
+
+    import matplotlib.pyplot as plt
+    import numpy as np
+    from matplotlib.collections import LineCollection
+    from matplotlib.patches import Rectangle
+
+    Path(save_path).mkdir(parents=True, exist_ok=True)
+
+    x_coords = [pos[0] for pos in trajectory]
+    y_coords = [pos[1] for pos in trajectory]
+
+    fig, ax = plt.subplots(figsize=(10, 8))
+
+    if walls:
+        for wall_data in walls:
+            color_name = wall_data[0]
+            rect = wall_data[1]
+            mpl_color = "black" if color_name == "BLACK" else "red"
+            patch = Rectangle(
+                (rect.x, rect.y),
+                rect.width,
+                rect.height,
+                linewidth=1,
+                edgecolor=mpl_color,
+                facecolor=mpl_color,
+                alpha=0.7,
+            )
+            ax.add_patch(patch)
+
+    if len(trajectory) >= 2:
+        points = np.column_stack((x_coords, y_coords)).astype(float)
+        segments = np.stack([points[:-1], points[1:]], axis=1)
+        lc = LineCollection(segments.tolist(), cmap="viridis", linewidth=2)
+        lc.set_array(np.linspace(0, 1, len(segments)))
+        ax.add_collection(lc)
+        plt.colorbar(lc, ax=ax, label="Time (normalized)")
+    else:
+        ax.plot(
+            x_coords, y_coords, "o", color="tab:blue", markersize=6, label="Position"
+        )
+
+    ax.plot(x_coords[0], y_coords[0], "go", markersize=10, label="Start", zorder=5)
+    ax.plot(x_coords[-1], y_coords[-1], "ro", markersize=10, label="End", zorder=5)
+
+    ax.set_xlim(0, config["world_width"])
+    ax.set_ylim(0, config["world_height"])
+    ax.set_xlabel("X Position (pixels)", fontsize=12)
+    ax.set_ylabel("Y Position (pixels)", fontsize=12)
+
+    ax.set_title(
+        f"Task 4 Agent {agent_id} Trajectory (Run {run_id})\n{len(trajectory)} timesteps",
+        fontsize=14,
+    )
+    ax.legend(loc="upper right")
+    ax.grid(True, alpha=0.3)
+    ax.set_aspect("equal")
+
+    filename = f"{save_path}/trajectory_agent_{agent_id}_run_{run_id}.png"
+    plt.savefig(filename, dpi=150, bbox_inches="tight")
+    print(f"Saved trajectory plot: {filename}")
+    plt.close()

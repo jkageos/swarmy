@@ -1,44 +1,51 @@
-#Simulation parameters
+## Simulation parameters
 FPS: 60 # Frames per second. A typical value is 60 frames per seconds
 max_timestep: 2000 # Maximum number of time steps for the simulation
 
 ## World parameters
-world_width: 800
-world_height: 800
+world_width: 600
+world_height: 600
 background_color: [255, 255, 255]
 
 ## Robot parameters
-number_of_agents: 5
-default_velocity: 2           # choose even number
-default_angle_velocity: 2     # choose even number
+number_of_agents: 1
+default_velocity: 2 # choose even number
+default_angle_velocity: 2 # choose even number
 save_trajectory: 1
 
 ## Braitenberg parameters
-braitenberg_behavior: "aggressor"  # Options: "aggressor", "fear"
-sensor_offset: 15.0            # Distance from robot center to sensors (pixels)
-sensor_angle: 45.0             # Angle offset for sensors (degrees)
-motor_gain: 5.0                # Proportionality constant for sensor -> wheel velocity
-turn_constant: 5             # Constant c for heading change: Δφ = c(v_r - v_l)
+braitenberg_behavior: "aggressor" # Options: "aggressor", "fear"
+sensor_offset: 15.0 # Distance from robot center to sensors (pixels)
+sensor_angle: 45.0 # Angle offset for sensors (degrees)
+motor_gain: 5.0 # Proportionality constant for sensor -> wheel velocity
+turn_constant: 5 # Constant c for heading change: Δφ = c(v_r - v_l)
 
 ## Task 2 Proximity Sensor parameters
-draw_proximity_sensors: 1     # 1 = visualize sensors, 0 = hide
+draw_proximity_sensors: 1 # 1 = visualize sensors, 0 = hide
+
+## Task 4 Hill Climber parameters
+eval_timesteps: 2000 # Timesteps per genome evaluation
+grid_cell_size: 10 # Grid cell size for fitness calculation (pixels)
+num_generations: 100 # Number of evolution generations
+mutation_rate: 0.3 # Probability of mutating each genome parameter
+mutation_strength: 0.8 # Standard deviation of Gaussian mutation
 
 ## Controller ratios if different controllers are used for different robots
 #Example: If there are 6 robots and the first three robots uses controller_1 and the last three robots uses controller_2, then the controller_ratios will be 50% and 50% of the swarm:
 #controller_1 : 0.5
 #controller_2 : 0.5
-controller_1 : 1
-controller_2 : 0
+controller_1: 1
+controller_2: 0
 
-# Rendering options
+## Rendering options
 # 1 = full rendering (slowest, good for visualization)
 # 0 = headless with black screen (faster, good for data collection)
 # -1 = no display (fastest, best for batch experiments)
-rendering : 1
+rendering: -1
 
-# Optional scalability tweaks
-draw_bumpers: 1          # 0 disables bumper line rendering
-spatial_cell_size: 80    # size of spatial hash cells
+## Optional scalability tweaks
+draw_bumpers: 1 # 0 disables bumper line rendering
+spatial_cell_size: 80 # size of spatial hash cells
 escape_turn_frames: 6
 escape_reverse_min: 4
 escape_reverse_max: 7
