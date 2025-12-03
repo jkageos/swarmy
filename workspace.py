@@ -5,24 +5,54 @@
 # status:       prototype
 # =============================================================================
 import yaml
+
 from swarmy.experiment import Experiment
 
-### load the configuration file, check the config.yaml file for more information and to change to your needs
-with open ('config.yaml', 'r') as file:
+### load the configuration file
+with open("config.yaml", "r") as file:
     config = yaml.load(file, Loader=yaml.FullLoader)
-## Import uour implementation of the controller, sensor, environment and agent
-from controller.my_controller import MyController
-from sensors.bumper_sensor import BumperSensor
-from world.my_world import My_environment
-from agent.my_agent import MyAgent
 
+## ============================================================================
+## TASK 3.1: Single Robot Behaviors
+## ============================================================================
+# from agent.my_agent import MyAgent
+# from controller.task31a_controller import CollisionAvoidanceController
+# from controller.task31b_controller import WallFollowerController
+# from controller.task31c_controller import VacuumCleanerController
+# from controller.task31d_controller import LevyFlightController
+# from sensors.bumper_sensor import BumperSensor
+# from world.task31_world import Task31Environment
 
+# # Choose which controller to test (uncomment one):
+# agent_controller = [CollisionAvoidanceController]  # Task 3.1a
+# agent_controller = [WallFollowerController]        # Task 3.1b
+# agent_controller = [VacuumCleanerController]       # Task 3.1c
+# agent_controller = [LevyFlightController]          # Task 3.1d
 
-# add your controller, if you have more than one controller, add them to the list and specify the percentage of robots that should use this controller in the config.yaml file
-agent_controller = [MyController]
-# add your sensors, if you have more than one sensor, add them to the list all sensors are added to each robot
-agent_sensing = [BumperSensor]
+# # Add sensors
+# agent_sensing = [BumperSensor]
 
-exp1 = Experiment(config, agent_controller, agent_sensing, My_environment, MyAgent)
+# # Create and run experiment
+# exp1 = Experiment(config, agent_controller, agent_sensing, Task31Environment, MyAgent)
+# exp1.run(1)
 
+## ============================================================================
+## TASK 3.2: Potential Field Control
+## ============================================================================
+from agent.task32_agent import Task32Agent
+from controller.task32a_controller import DirectGradientController
+from controller.task32b_controller import IndirectGradientController
+from world.task32_world import Task32Environment
+
+# Choose which controller to test (uncomment one):
+agent_controller = [DirectGradientController]  # Task 3.2a
+# agent_controller = [IndirectGradientController]  # Task 3.2b
+
+# No sensors needed for potential field navigation
+agent_sensing = []
+
+# Create and run experiment
+exp1 = Experiment(
+    config, agent_controller, agent_sensing, Task32Environment, Task32Agent
+)
 exp1.run(1)
