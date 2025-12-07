@@ -1,30 +1,27 @@
 ## ============================================================================
 ## Simulation parameters
 ## ============================================================================
-FPS: 60 # Frames per second. A typical value is 60 frames per seconds
-max_timestep: 200 # Maximum number of timesteps for the simulation
+FPS: 60
+max_timestep: 6000
 
 ## ============================================================================
 ## World parameters
 ## ============================================================================
-world_width: 800
-world_height: 600
+world_width: 1000
+world_height: 800
 background_color: [255, 255, 255]
 
 ## ============================================================================
 ## Robot parameters
 ## ============================================================================
-number_of_agents: 1
-default_velocity: 4 # choose even number
-default_angle_velocity: 4 # choose even number
-save_trajectory: 1
+number_of_agents: 20
+default_velocity: 3
+default_angle_velocity: 3
+save_trajectory: 0
 
 ## ============================================================================
-## Controller ratios if different controllers are used for different robots
+## Controller ratios
 ## ============================================================================
-#Example: If there are 6 robots and the first three robots uses controller_1 and the last three robots uses controller_2, then the controller_ratios will be 50% and 50% of the swarm:
-#controller_1 : 0.5
-#controller_2 : 0.5
 controller_1: 1
 controller_2: 0
 
@@ -34,14 +31,23 @@ controller_2: 0
 rendering: 1
 
 ## ============================================================================
-## Task-specific settings
+## Task 4.1: Swarm Aggregation
 ## ============================================================================
-# Uncomment the settings below for specific tasks:
+proximity_range: 80
+aggregation_waiting_time: 80
+aggregation_cooldown: 40
 
-# Task 3.1: Single Robot Behaviors
-# max_timestep: 5000
-# save_trajectory: 0
-
-# Task 3.2: Potential Field Control
-# max_timestep: 3000
-# save_trajectory: 1
+## ============================================================================
+## Task 4.2: Reynolds Flocking (Toroidal Space)
+## ============================================================================
+separation_radius: 50.0
+alignment_radius: 80.0
+cohesion_radius: 100.0
+separation_weight: 5.0
+alignment_weight: 1.0
+cohesion_weight: 0.02
+flock_speed: 3.0
+heading_noise: 0.0
+max_sensing_radius: 120.0
+min_separation_distance: 35.0
+show_velocity: False
