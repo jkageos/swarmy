@@ -14,11 +14,11 @@ class IndirectGradientController(Actuation):
         self.config = config
         self.init_pos = True
 
-        # Parameters for indirect control
-        self.dt = 1.0  # Integration time step
-        self.c = 0.95  # Discount factor (memory of former directions)
-        self.acceleration_scale = 1000.0  # Scale for gradient acceleration
-        self.max_velocity = 10.0  # Maximum velocity magnitude
+        t32 = config.get("task32", {})
+        self.dt = float(t32.get("dt", 1.0))
+        self.c = float(t32.get("indirect_c", 0.95))
+        self.acceleration_scale = float(t32.get("indirect_acceleration_scale", 1000.0))
+        self.max_velocity = float(t32.get("indirect_max_velocity", 10.0))
 
         # State variables
         self.v_x = 0.0  # Current velocity in x

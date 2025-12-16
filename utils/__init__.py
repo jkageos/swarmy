@@ -8,6 +8,7 @@ from .plot_flocking import (
     plot_order_vs_noise,
 )
 from .plot_potential_field import plot_gradient_field, plot_task32_trajectory
+from .plot_sampling import plot_sampling_results, print_sampling_summary
 from .plot_trajectories import plot_task31_trajectory
 
 __all__ = [
@@ -17,4 +18,6 @@ __all__ = [
     "compute_order_parameter",
     "plot_order_vs_noise",
     "plot_flocking_trajectories",
+    "plot_sampling_results",
+    "print_sampling_summary",
 ]

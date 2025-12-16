@@ -14,10 +14,10 @@ class DirectGradientController(Actuation):
         self.config = config
         self.init_pos = True
 
-        # Parameters for gradient control
-        self.dt = 1.0
-        self.velocity_scale = 5000.0
-        self.max_velocity = 10.0
+        t32 = config.get("task32", {})
+        self.dt = float(t32.get("dt", 1.0))
+        self.velocity_scale = float(t32.get("direct_velocity_scale", 5000.0))
+        self.max_velocity = float(t32.get("direct_max_velocity", 10.0))
 
         # Trajectory tracking
         self.trajectory = []
