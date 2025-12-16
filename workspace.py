@@ -4,7 +4,6 @@
 # version:      0.9
 # status:       prototype
 # =============================================================================
-import multiprocessing as mp
 import os
 import sys
 from copy import deepcopy
@@ -252,6 +251,13 @@ if __name__ == "__main__":
     if config.get("task52", {}).get("active", False):
         import time
 
+        from utils.mp_utils import (
+            apply_mp_safety_env,
+            run_pool_batches,
+            safe_worker_count,
+            set_low_priority,
+        )
+
         t52 = config["task52"]
         SWARM_SIZES = t52["swarm_sizes"]
         SENSOR_RANGES = t52["sensor_ranges"]
@@ -265,6 +271,9 @@ if __name__ == "__main__":
         )
         cfg_base["FPS"] = t52.get("FPS", cfg_base["FPS"])
 
+        # Parent-process safety (propagates to children)
+        apply_mp_safety_env(blas_threads=str(t52.get("blas_threads", 1)))
+
         combos = [
             (N, r, cfg_base, EXPERIMENTS_PER_CONFIG)
             for N in SWARM_SIZES
@@ -273,24 +282,48 @@ if __name__ == "__main__":
         total = len(combos)
         results = {}
 
+        # Safety knobs (configurable via config.yaml -> task52)
+        workers = safe_worker_count(
+            total_jobs=total,
+            max_workers=int(t52.get("max_workers", 0)) or None,
+            max_cpu_utilization=float(t52.get("max_cpu_utilization", 0.75)),
+        )
+        maxtasks = int(t52.get("maxtasksperchild", 10))
+        batch_size = int(t52.get("batch_size", total))
+        cooldown = float(t52.get("cooldown_seconds", 0.0))
+
         print("\n" + "=" * 70)
         print("🤖 TASK 5.2: Local Sampling in a Swarm (multiprocessing)")
+        print(
+            f"Safety: workers={workers}, maxtasksperchild={maxtasks}, batch_size={batch_size}, cooldown={cooldown}s"
+        )
         print("=" * 70)
 
         start = time.time()
-        with mp.get_context("spawn").Pool(
-            processes=min(total, mp.cpu_count() or 1)
-        ) as pool:
-            for idx, (N, r, estimates) in enumerate(
-                pool.imap_unordered(_run_task52_config, combos), 1
+        try:
+            completed = 0
+            for N, r, estimates in run_pool_batches(
+                combos,
+                _run_task52_config,
+                processes=workers,
+                maxtasksperchild=maxtasks,
+                batch_size=batch_size,
+                cooldown_seconds=cooldown,
+                ctx="spawn",
+                initializer=set_low_priority,
+                unordered=True,
             ):
                 results[(N, r)] = estimates
+                completed += 1
                 if estimates:
                     print(
-                        f"[{idx}/{total}] N={N}, r={r:.2f} → {len(estimates)} runs, "
+                        f"[{completed}/{total}] N={N}, r={r:.2f} → {len(estimates)} runs, "
                         f"mean={np.mean(estimates):.4f}, std={np.std(estimates):.4f}",
                         flush=True,
                     )
+        except KeyboardInterrupt:
+            print(f"\n\n✗ Interrupted by user after {len(results)} configs")
+            sys.exit(0)
 
         elapsed = time.time() - start
         print(f"\n✓ Completed {len(results)} configs in {elapsed / 60:.1f} min")
