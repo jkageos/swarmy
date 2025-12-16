@@ -4,9 +4,10 @@ FPS: 60 # Frames per second. A typical value is 60 frames per seconds
 max_timestep: 2000 # Maximum number of time steps for the simulation
 
 ## World parameters
-world_width: 600
-world_height: 600
+world_width: 500
+world_height: 500
 background_color: [255, 255, 255]
+
 
 ## Robot parameters
 number_of_agents: 10
