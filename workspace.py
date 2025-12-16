@@ -259,6 +259,15 @@ if __name__ == "__main__":
         )
 
         t52 = config["task52"]
+        mp_cfg = config.get("multiprocessing", {})  # global defaults
+
+        # Parent-process safety (propagates to children)
+        apply_mp_safety_env(blas_threads=str(mp_cfg.get("blas_threads", 1)))
+        # task52 can still override if desired
+        blas_override = t52.get("blas_threads")
+        if blas_override is not None:
+            apply_mp_safety_env(blas_threads=str(blas_override))
+
         SWARM_SIZES = t52["swarm_sizes"]
         SENSOR_RANGES = t52["sensor_ranges"]
         EXPERIMENTS_PER_CONFIG = int(t52["experiments_per_config"])
@@ -271,9 +280,6 @@ if __name__ == "__main__":
         )
         cfg_base["FPS"] = t52.get("FPS", cfg_base["FPS"])
 
-        # Parent-process safety (propagates to children)
-        apply_mp_safety_env(blas_threads=str(t52.get("blas_threads", 1)))
-
         combos = [
             (N, r, cfg_base, EXPERIMENTS_PER_CONFIG)
             for N in SWARM_SIZES
@@ -282,15 +288,22 @@ if __name__ == "__main__":
         total = len(combos)
         results = {}
 
-        # Safety knobs (configurable via config.yaml -> task52)
+        # Safety knobs (global defaults with task-level override if set)
         workers = safe_worker_count(
             total_jobs=total,
-            max_workers=int(t52.get("max_workers", 0)) or None,
-            max_cpu_utilization=float(t52.get("max_cpu_utilization", 0.75)),
+            max_workers=int(t52.get("max_workers", 0) or mp_cfg.get("max_workers", 0))
+            or None,
+            max_cpu_utilization=float(
+                t52.get("max_cpu_utilization", mp_cfg.get("max_cpu_utilization", 0.75))
+            ),
         )
-        maxtasks = int(t52.get("maxtasksperchild", 10))
-        batch_size = int(t52.get("batch_size", total))
-        cooldown = float(t52.get("cooldown_seconds", 0.0))
+        maxtasks = int(t52.get("maxtasksperchild", mp_cfg.get("maxtasksperchild", 10)))
+        batch_size = int(
+            t52.get("batch_size", mp_cfg.get("batch_size", total)) or total
+        )
+        cooldown = float(
+            t52.get("cooldown_seconds", mp_cfg.get("cooldown_seconds", 0.0))
+        )
 
         print("\n" + "=" * 70)
         print("🤖 TASK 5.2: Local Sampling in a Swarm (multiprocessing)")
