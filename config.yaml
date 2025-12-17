@@ -8,12 +8,12 @@ max_timestep: 6000
 ## Multiprocessing (global safety knobs)
 ## ============================================================================
 multiprocessing:
-  max_cpu_utilization: 0.5   # fraction of logical cores to use
-  max_workers: 0              # 0 or null => auto (leaves one core free)
-  blas_threads: 1             # limit BLAS threads in workers
-  maxtasksperchild: 10        # recycle workers
-  batch_size: 0               # 0 => run all jobs in one batch
-  cooldown_seconds: 0.0       # pause between batches (seconds)
+  max_cpu_utilization: 0.33  # ~6-7 cores max
+  max_workers: 4             # hard cap
+  blas_threads: 1            # single-threaded BLAS
+  maxtasksperchild: 5        # recycle workers frequently
+  batch_size: 4              # only 4 configs per batch
+  cooldown_seconds: 2.0      # pause between batches
 
 ## ============================================================================
 ## World parameters

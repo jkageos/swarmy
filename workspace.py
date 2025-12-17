@@ -18,16 +18,16 @@ from swarmy.experiment import Experiment
 
 def _run_task52_config(args):
     """Run all experiments for one (N, r) in a separate process."""
-    N, r, cfg_base, EXPERIMENTS_PER_CONFIG = args
+    N, r, cfg_base, EXPERIMENTS_PER_CONFIG, runs_per_chunk = args
     os.environ.setdefault("SDL_VIDEODRIVER", "dummy")  # headless pygame
     from agent.task52_agent import Task52Agent
     from controller.task52_controller import SamplingController
     from sensors.task52_sensor import ColorSensor
-    from swarmy.experiment import Experiment  # re-import in subprocess
+    from swarmy.experiment import Experiment
     from world.task52_world import Task52Environment
 
     estimates = []
-    for run_idx in range(EXPERIMENTS_PER_CONFIG):
+    for run_idx in range(runs_per_chunk):
         cfg = deepcopy(cfg_base)
         cfg["number_of_agents"] = int(N)
         cfg["sensor_range"] = float(r)
@@ -40,10 +40,9 @@ def _run_task52_config(args):
         if agent_estimates:
             estimates.append(float(np.mean(agent_estimates)))
 
-        # Heartbeat
         if (run_idx + 1) % 50 == 0:
             print(
-                f"  [N={N}, r={r:.2f}] progress {run_idx + 1}/{EXPERIMENTS_PER_CONFIG}",
+                f"  [N={N}, r={r:.2f}] progress {run_idx + 1}/{runs_per_chunk}",
                 flush=True,
             )
 
@@ -298,13 +297,23 @@ if __name__ == "__main__":
         )
         cfg_base["FPS"] = t52.get("FPS", cfg_base["FPS"])
 
+        # Split 1000 runs into chunks (e.g., 100 per worker)
+        RUNS_PER_CHUNK = 100  # Each worker does 100 runs
+        NUM_CHUNKS = EXPERIMENTS_PER_CONFIG // RUNS_PER_CHUNK
+
+        # Build combos: each (N, r) appears NUM_CHUNKS times
         combos = [
-            (N, r, cfg_base, EXPERIMENTS_PER_CONFIG)
+            (N, r, cfg_base, EXPERIMENTS_PER_CONFIG, RUNS_PER_CHUNK)
             for N in SWARM_SIZES
             for r in SENSOR_RANGES
+            for _ in range(NUM_CHUNKS)  # Repeat each config NUM_CHUNKS times
         ]
         total = len(combos)
-        results = {}
+
+        # Collect results with aggregation
+        from collections import defaultdict
+
+        results = defaultdict(list)
 
         # Safety knobs from global multiprocessing config only
         workers, maxtasks, batch_size, cooldown = resolve_pool_settings(total, mp_cfg)
@@ -330,12 +339,15 @@ if __name__ == "__main__":
                 initializer=set_low_priority,
                 unordered=True,
             ):
-                results[(N, r)] = estimates
+                # Aggregate results for this (N, r)
+                results[(N, r)].extend(estimates)
                 completed += 1
+                current_total = len(results[(N, r)])
                 if estimates:
                     print(
-                        f"[{completed}/{total}] N={N}, r={r:.2f} → {len(estimates)} runs, "
-                        f"mean={np.mean(estimates):.4f}, std={np.std(estimates):.4f}",
+                        f"[{completed}/{total}] N={N}, r={r:.2f} → chunk done, "
+                        f"cumulative {current_total} runs, "
+                        f"mean={np.mean(results[(N, r)]):.4f}, std={np.std(results[(N, r)]):.4f}",
                         flush=True,
                     )
         except KeyboardInterrupt:

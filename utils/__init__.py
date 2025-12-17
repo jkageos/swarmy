@@ -2,6 +2,12 @@
 Utilities for plotting and analysis of robot behaviors
 """
 
+from .mp_utils import (
+    apply_mp_safety_env,
+    resolve_pool_settings,
+    run_pool_batches,
+    set_low_priority,
+)
 from .plot_flocking import (
     compute_order_parameter,
     plot_flocking_trajectories,
@@ -20,4 +26,8 @@ __all__ = [
     "plot_flocking_trajectories",
     "plot_sampling_results",
     "print_sampling_summary",
+    "apply_mp_safety_env",
+    "resolve_pool_settings",
+    "run_pool_batches",
+    "set_low_priority",
 ]
