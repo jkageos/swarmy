@@ -268,100 +268,121 @@ if __name__ == "__main__":
     if config.get("task52", {}).get("active", False):
         import time
 
-        from utils.mp_utils import (
-            apply_mp_safety_env,
-            resolve_pool_settings,
-            run_pool_batches,
-            set_low_priority,
-        )
+        from utils.data_manager import load_task52_results, save_task52_results
+        from utils.plot_sampling import plot_sampling_results, print_sampling_summary
 
         t52 = config["task52"]
-        mp_cfg = config.get("multiprocessing", {})  # global defaults
 
-        # Parent-process safety (propagates to children)
-        apply_mp_safety_env(blas_threads=str(mp_cfg.get("blas_threads", 1)))
-        # task52 can still override if desired
-        blas_override = t52.get("blas_threads")
-        if blas_override is not None:
-            apply_mp_safety_env(blas_threads=str(blas_override))
+        # Check if we should use cached data
+        use_cached = t52.get("use_cached_data", False)
+        data_file = t52.get("data_file", "task52_results.pkl")
 
-        SWARM_SIZES = t52["swarm_sizes"]
-        SENSOR_RANGES = t52["sensor_ranges"]
-        EXPERIMENTS_PER_CONFIG = int(t52["experiments_per_config"])
+        if use_cached:
+            # Load and plot cached data
+            loaded = load_task52_results(data_file)
+            if loaded is not None:
+                results, SWARM_SIZES, SENSOR_RANGES = loaded
 
-        cfg_base = deepcopy(config)
-        cfg_base["rendering"] = t52.get("rendering", cfg_base["rendering"])
-        cfg_base["max_timestep"] = t52.get("max_timestep", cfg_base["max_timestep"])
-        cfg_base["save_trajectory"] = t52.get(
-            "save_trajectory", cfg_base["save_trajectory"]
-        )
-        cfg_base["FPS"] = t52.get("FPS", cfg_base["FPS"])
+                print("\n" + "=" * 70)
+                print("📊 REGENERATING PLOTS FROM CACHED DATA")
+                print("=" * 70)
 
-        # Split 1000 runs into chunks (e.g., 100 per worker)
-        RUNS_PER_CHUNK = 100  # Each worker does 100 runs
-        NUM_CHUNKS = EXPERIMENTS_PER_CONFIG // RUNS_PER_CHUNK
-
-        # Build combos: each (N, r) appears NUM_CHUNKS times
-        combos = [
-            (N, r, cfg_base, EXPERIMENTS_PER_CONFIG, RUNS_PER_CHUNK)
-            for N in SWARM_SIZES
-            for r in SENSOR_RANGES
-            for _ in range(NUM_CHUNKS)  # Repeat each config NUM_CHUNKS times
-        ]
-        total = len(combos)
-
-        # Collect results with aggregation
-        from collections import defaultdict
-
-        results = defaultdict(list)
-
-        # Safety knobs from global multiprocessing config only
-        workers, maxtasks, batch_size, cooldown = resolve_pool_settings(total, mp_cfg)
-
-        print("\n" + "=" * 70)
-        print("🤖 TASK 5.2: Local Sampling in a Swarm (multiprocessing)")
-        print(
-            f"Safety: workers={workers}, maxtasksperchild={maxtasks}, batch_size={batch_size}, cooldown={cooldown}s"
-        )
-        print("=" * 70)
-
-        start = time.time()
-        try:
-            completed = 0
-            for N, r, estimates in run_pool_batches(
-                combos,
-                _run_task52_config,
-                processes=workers,
-                maxtasksperchild=maxtasks,
-                batch_size=batch_size,
-                cooldown_seconds=cooldown,
-                ctx="spawn",
-                initializer=set_low_priority,
-                unordered=True,
-            ):
-                # Aggregate results for this (N, r)
-                results[(N, r)].extend(estimates)
-                completed += 1
-                current_total = len(results[(N, r)])
-                if estimates:
-                    print(
-                        f"[{completed}/{total}] N={N}, r={r:.2f} → chunk done, "
-                        f"cumulative {current_total} runs, "
-                        f"mean={np.mean(results[(N, r)]):.4f}, std={np.std(results[(N, r)]):.4f}",
-                        flush=True,
-                    )
-        except KeyboardInterrupt:
-            print(f"\n\n✗ Interrupted by user after {len(results)} configs")
-            sys.exit(0)
-
-        elapsed = time.time() - start
-        print(f"\n✓ Completed {len(results)} configs in {elapsed / 60:.1f} min")
-
-        if results:
-            from utils.plot_sampling import (
-                plot_sampling_results,
-                print_sampling_summary,
+                plot_sampling_results(results, SWARM_SIZES, SENSOR_RANGES)
+                print_sampling_summary(results, true_ratio=0.5)
+            else:
+                print(
+                    "\n⚠️  No cached data found. Set use_cached_data: false to run experiments."
+                )
+        else:
+            # Run experiments
+            from utils.mp_utils import (
+                apply_mp_safety_env,
+                resolve_pool_settings,
+                run_pool_batches,
+                set_low_priority,
             )
 
-            plot_sampling_results(results, SWARM_SIZES, SENSOR_RANGES)
-            print_sampling_summary(results, true_ratio=0.5)
+            mp_cfg = config.get("multiprocessing", {})
+
+            # Parent-process safety (propagates to children)
+            apply_mp_safety_env(blas_threads=str(mp_cfg.get("blas_threads", 1)))
+            blas_override = t52.get("blas_threads")
+            if blas_override is not None:
+                apply_mp_safety_env(blas_threads=str(blas_override))
+
+            SWARM_SIZES = t52["swarm_sizes"]
+            SENSOR_RANGES = t52["sensor_ranges"]
+            EXPERIMENTS_PER_CONFIG = int(t52["experiments_per_config"])
+
+            cfg_base = deepcopy(config)
+            cfg_base["rendering"] = t52.get("rendering", cfg_base["rendering"])
+            cfg_base["max_timestep"] = t52.get("max_timestep", cfg_base["max_timestep"])
+            cfg_base["save_trajectory"] = t52.get(
+                "save_trajectory", cfg_base["save_trajectory"]
+            )
+            cfg_base["FPS"] = t52.get("FPS", cfg_base["FPS"])
+
+            RUNS_PER_CHUNK = 100
+            NUM_CHUNKS = EXPERIMENTS_PER_CONFIG // RUNS_PER_CHUNK
+
+            combos = [
+                (N, r, cfg_base, EXPERIMENTS_PER_CONFIG, RUNS_PER_CHUNK)
+                for N in SWARM_SIZES
+                for r in SENSOR_RANGES
+                for _ in range(NUM_CHUNKS)
+            ]
+            total = len(combos)
+
+            from collections import defaultdict
+
+            results = defaultdict(list)
+
+            workers, maxtasks, batch_size, cooldown = resolve_pool_settings(
+                total, mp_cfg
+            )
+
+            print("\n" + "=" * 70)
+            print("🤖 TASK 5.2: Local Sampling in a Swarm (multiprocessing)")
+            print(
+                f"Safety: workers={workers}, maxtasksperchild={maxtasks}, batch_size={batch_size}, cooldown={cooldown}s"
+            )
+            print("=" * 70)
+
+            start = time.time()
+            try:
+                completed = 0
+                for N, r, estimates in run_pool_batches(
+                    combos,
+                    _run_task52_config,
+                    processes=workers,
+                    maxtasksperchild=maxtasks,
+                    batch_size=batch_size,
+                    cooldown_seconds=cooldown,
+                    ctx="spawn",
+                    initializer=set_low_priority,
+                    unordered=True,
+                ):
+                    results[(N, r)].extend(estimates)
+                    completed += 1
+                    current_total = len(results[(N, r)])
+                    if estimates:
+                        print(
+                            f"[{completed}/{total}] N={N}, r={r:.2f} → chunk done, "
+                            f"cumulative {current_total} runs, "
+                            f"mean={np.mean(results[(N, r)]):.4f}, std={np.std(results[(N, r)]):.4f}",
+                            flush=True,
+                        )
+            except KeyboardInterrupt:
+                print(f"\n\n✗ Interrupted by user after {len(results)} configs")
+                sys.exit(0)
+
+            elapsed = time.time() - start
+            print(f"\n✓ Completed {len(results)} configs in {elapsed / 60:.1f} min")
+
+            if results:
+                # Save results to file
+                save_task52_results(results, SWARM_SIZES, SENSOR_RANGES, data_file)
+
+                # Generate plots
+                plot_sampling_results(results, SWARM_SIZES, SENSOR_RANGES)
+                print_sampling_summary(results, true_ratio=0.5)

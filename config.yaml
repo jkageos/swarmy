@@ -8,12 +8,13 @@ max_timestep: 6000
 ## Multiprocessing (global safety knobs)
 ## ============================================================================
 multiprocessing:
-  max_cpu_utilization: 0.33  # ~6-7 cores max
-  max_workers: 4             # hard cap
-  blas_threads: 1            # single-threaded BLAS
-  maxtasksperchild: 5        # recycle workers frequently
-  batch_size: 4              # only 4 configs per batch
-  cooldown_seconds: 2.0      # pause between batches
+  max_cpu_utilization: 0.5     # Use up to 6 cores
+  max_workers: 6               # Hard cap at 6 workers (cores)
+  blas_threads: 1              # Keep BLAS single-threaded
+  maxtasksperchild: 5          # Recycle workers every 5 tasks
+  batch_size: 6                # 6 configs per batch
+  cooldown_seconds: 2.0        # Pause 2 seconds between batches
+
 
 ## ============================================================================
 ## World parameters
@@ -133,3 +134,7 @@ task52:
   max_timestep: 1
   save_trajectory: 0
   FPS: 10000
+  
+  # Data persistence
+  use_cached_data: true           # Set to true to skip experiments and use cached data
+  data_file: "task52_results.pkl"  # Filename for saved results
