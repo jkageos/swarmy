@@ -8,7 +8,7 @@ max_timestep: 6000
 ## Multiprocessing (global safety knobs)
 ## ============================================================================
 multiprocessing:
-  max_cpu_utilization: 0.75   # fraction of logical cores to use
+  max_cpu_utilization: 0.5   # fraction of logical cores to use
   max_workers: 0              # 0 or null => auto (leaves one core free)
   blas_threads: 1             # limit BLAS threads in workers
   maxtasksperchild: 10        # recycle workers

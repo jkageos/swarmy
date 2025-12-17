@@ -4,6 +4,8 @@
 # version:      0.9
 # status:       prototype
 # =============================================================================
+import contextlib
+import io
 import os
 import sys
 from copy import deepcopy
@@ -25,17 +27,26 @@ def _run_task52_config(args):
     from world.task52_world import Task52Environment
 
     estimates = []
-    for _ in range(EXPERIMENTS_PER_CONFIG):
+    for run_idx in range(EXPERIMENTS_PER_CONFIG):
         cfg = deepcopy(cfg_base)
         cfg["number_of_agents"] = int(N)
         cfg["sensor_range"] = float(r)
         exp = Experiment(
             cfg, [SamplingController], [ColorSensor], Task52Environment, Task52Agent
         )
-        exp.run(rendering=0)
+        with contextlib.redirect_stdout(io.StringIO()):
+            exp.run(rendering=0)
         agent_estimates = [a.local_estimate for a in exp.world.agentlist]
         if agent_estimates:
             estimates.append(float(np.mean(agent_estimates)))
+
+        # Heartbeat
+        if (run_idx + 1) % 50 == 0:
+            print(
+                f"  [N={N}, r={r:.2f}] progress {run_idx + 1}/{EXPERIMENTS_PER_CONFIG}",
+                flush=True,
+            )
+
     return (N, r, estimates)
 
 
@@ -43,6 +54,13 @@ if __name__ == "__main__":
     ### load the configuration file
     with open("config.yaml", "r") as file:
         config = yaml.load(file, Loader=yaml.FullLoader)
+
+    # Apply global multiprocessing safety limits once
+    from utils.mp_utils import apply_mp_safety_env
+
+    apply_mp_safety_env(
+        blas_threads=str(config.get("multiprocessing", {}).get("blas_threads", 1))
+    )
 
     # ========================================================================
     # TASK 3.1: Single Robot Behaviors
@@ -253,8 +271,8 @@ if __name__ == "__main__":
 
         from utils.mp_utils import (
             apply_mp_safety_env,
+            resolve_pool_settings,
             run_pool_batches,
-            safe_worker_count,
             set_low_priority,
         )
 
@@ -288,22 +306,8 @@ if __name__ == "__main__":
         total = len(combos)
         results = {}
 
-        # Safety knobs (global defaults with task-level override if set)
-        workers = safe_worker_count(
-            total_jobs=total,
-            max_workers=int(t52.get("max_workers", 0) or mp_cfg.get("max_workers", 0))
-            or None,
-            max_cpu_utilization=float(
-                t52.get("max_cpu_utilization", mp_cfg.get("max_cpu_utilization", 0.75))
-            ),
-        )
-        maxtasks = int(t52.get("maxtasksperchild", mp_cfg.get("maxtasksperchild", 10)))
-        batch_size = int(
-            t52.get("batch_size", mp_cfg.get("batch_size", total)) or total
-        )
-        cooldown = float(
-            t52.get("cooldown_seconds", mp_cfg.get("cooldown_seconds", 0.0))
-        )
+        # Safety knobs from global multiprocessing config only
+        workers, maxtasks, batch_size, cooldown = resolve_pool_settings(total, mp_cfg)
 
         print("\n" + "=" * 70)
         print("🤖 TASK 5.2: Local Sampling in a Swarm (multiprocessing)")

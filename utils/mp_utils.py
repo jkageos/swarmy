@@ -30,9 +30,10 @@ def set_low_priority() -> None:
             import psutil  # optional
 
             p = psutil.Process(pid)
-            if sys.platform.startswith("win"):
-                p.nice(psutil.BELOW_NORMAL_PRIORITY_CLASS)
-            else:
+            below = getattr(psutil, "BELOW_NORMAL_PRIORITY_CLASS", None)
+            if sys.platform.startswith("win") and below is not None:
+                p.nice(below)  # type: ignore[arg-type]
+            elif not sys.platform.startswith("win"):
                 p.nice(10)
             return
         except Exception:
@@ -44,10 +45,13 @@ def set_low_priority() -> None:
                 import ctypes
 
                 BELOW_NORMAL_PRIORITY_CLASS = 0x00004000
-                ctypes.windll.kernel32.SetPriorityClass(
-                    ctypes.windll.kernel32.GetCurrentProcess(),
-                    BELOW_NORMAL_PRIORITY_CLASS,
-                )
+                windll = getattr(ctypes, "windll", None)
+                if windll is not None:
+                    k32 = getattr(windll, "kernel32", None)
+                    if k32 is not None and hasattr(k32, "SetPriorityClass"):
+                        k32.SetPriorityClass(
+                            k32.GetCurrentProcess(), BELOW_NORMAL_PRIORITY_CLASS
+                        )
             except Exception:
                 pass
         else:
@@ -61,23 +65,6 @@ def set_low_priority() -> None:
                 pass
     except Exception:
         pass
-
-
-def safe_worker_count(
-    total_jobs: int, max_workers: int | None = None, max_cpu_utilization: float = 0.75
-) -> int:
-    """
-    Compute conservative worker count.
-    - Leaves 1 core free by default.
-    - Caps by utilization and explicit max_workers.
-    """
-    cpu = mp.cpu_count() or 1
-    util_cap = max(1, int(cpu * max(0.1, min(1.0, float(max_cpu_utilization)))))
-    leave_one = max(1, cpu - 1)
-    cap = min(util_cap, leave_one)
-    if isinstance(max_workers, int) and max_workers > 0:
-        cap = min(cap, max_workers)
-    return max(1, min(total_jobs, cap))
 
 
 def run_pool_batches(
@@ -122,3 +109,24 @@ def run_pool_batches(
         i += batch_size
         if cooldown_seconds > 0.0 and i < total:
             time.sleep(cooldown_seconds)
+
+
+def resolve_pool_settings(total_jobs: int, mp_cfg: dict):
+    """
+    Derive pool settings from global multiprocessing config.
+    """
+    cpu = mp.cpu_count() or 1
+    util_cap = max(
+        1, int(cpu * max(0.1, min(1.0, float(mp_cfg.get("max_cpu_utilization", 0.75)))))
+    )
+    leave_one = max(1, cpu - 1)
+    cap = min(util_cap, leave_one)
+    max_workers_cfg = int(mp_cfg.get("max_workers", 0))
+    if max_workers_cfg > 0:
+        cap = min(cap, max_workers_cfg)
+    workers = max(1, min(total_jobs, cap))
+
+    maxtasks = int(mp_cfg.get("maxtasksperchild", 10))
+    batch_size = int(mp_cfg.get("batch_size", total_jobs) or total_jobs)
+    cooldown = float(mp_cfg.get("cooldown_seconds", 0.0))
+    return workers, maxtasks, batch_size, cooldown
