@@ -19,7 +19,7 @@ from swarmy.experiment import Experiment
 def _run_task52_config(args):
     """Run all experiments for one (N, r) in a separate process."""
     N, r, cfg_base, EXPERIMENTS_PER_CONFIG, runs_per_chunk = args
-    os.environ.setdefault("SDL_VIDEODRIVER", "dummy")  # headless pygame
+    os.environ.setdefault("SDL_VIDEODRIVER", "dummy")
     from agent.task52_agent import Task52Agent
     from controller.task52_controller import SamplingController
     from sensors.task52_sensor import ColorSensor
@@ -47,6 +47,46 @@ def _run_task52_config(args):
             )
 
     return (N, r, estimates)
+
+
+def _run_task6_config(args):
+    """Run single Task 6 experiment in subprocess."""
+    anti_pct, run_idx, cfg_base, cluster_distance = args
+    os.environ.setdefault("SDL_VIDEODRIVER", "dummy")
+
+    from agent.task6_agent import Task6Agent
+    from controller.task6_controller import Task6Controller
+    from sensors.task6_sensor import Task6Sensor
+    from swarmy.experiment import Experiment
+    from utils.task6_analysis import compute_clustering_metrics
+    from world.task6_world import Task6Environment
+
+    cfg = deepcopy(cfg_base)
+
+    # Calculate number of anti-agents
+    num_anti = int((anti_pct / 100.0) * cfg["number_of_agents"])
+
+    # Create experiment
+    exp = Experiment(
+        cfg,
+        [Task6Controller],
+        [Task6Sensor],
+        Task6Environment,
+        Task6Agent,
+    )
+
+    # Mark anti-agents
+    for i, agent in enumerate(exp.world.agentlist):
+        if i < num_anti:
+            agent.is_anti_agent = True
+
+    # Run experiment (suppress output)
+    with contextlib.redirect_stdout(io.StringIO()):
+        exp.run(rendering=0)
+
+    # Analyze clustering
+    metrics = compute_clustering_metrics(exp.world.agentlist, cluster_distance)
+    return (anti_pct, metrics["max_cluster"])
 
 
 if __name__ == "__main__":
@@ -386,3 +426,216 @@ if __name__ == "__main__":
                 # Generate plots
                 plot_sampling_results(results, SWARM_SIZES, SENSOR_RANGES)
                 print_sampling_summary(results, true_ratio=0.5)
+
+    # ========================================================================
+    # TASK 6: Swarm Aggregation with Anti-Agents
+    # ========================================================================
+    if config.get("task6", {}).get("active", False):
+        from agent.task6_agent import Task6Agent
+        from controller.task6_controller import Task6Controller
+        from sensors.task6_sensor import Task6Sensor
+        from utils.task6_analysis import (
+            compute_clustering_metrics,
+            plot_cluster_distribution,
+            plot_task6_results,
+            print_task6_summary,
+        )
+        from world.task6_world import Task6Environment
+
+        t6 = config["task6"]
+
+        # Check if multiprocessing is enabled
+        use_mp = t6.get("use_multiprocessing", False)
+
+        # Get sweep parameters
+        anti_agent_percentages = t6.get("anti_agent_percentages", [0, 5, 10, 15, 20])
+        runs_per_percentage = int(t6.get("runs_per_percentage", 3))
+        cluster_distance = t6.get("cluster_distance", 100)
+
+        results = []
+        total_runs = len(anti_agent_percentages) * runs_per_percentage
+        completed_runs = 0
+
+        print("\n" + "=" * 70)
+        print("🤖 TASK 6: Swarm Aggregation with Anti-Agents")
+        if use_mp:
+            print("   (Multiprocessing ENABLED for faster execution)")
+        print("=" * 70)
+
+        if use_mp:
+            # Multiprocessing version
+            import time
+            from collections import defaultdict
+
+            from utils.mp_utils import (
+                resolve_pool_settings,
+                run_pool_batches,
+                set_low_priority,
+            )
+
+            # Prepare all tasks
+            mp_cfg = config.get("multiprocessing", {})
+            cfg_base = deepcopy(config)
+            cfg_base["rendering"] = 0  # Force no rendering for multiprocessing
+            cfg_base["max_timestep"] = t6.get("max_timestep", cfg_base["max_timestep"])
+            cfg_base["save_trajectory"] = 0
+
+            tasks = [
+                (anti_pct, run_idx, cfg_base, cluster_distance)
+                for anti_pct in anti_agent_percentages
+                for run_idx in range(runs_per_percentage)
+            ]
+
+            workers, maxtasks, batch_size, cooldown = resolve_pool_settings(
+                len(tasks), mp_cfg
+            )
+
+            print(
+                f"Multiprocessing: workers={workers}, batch_size={batch_size}, "
+                f"maxtasksperchild={maxtasks}"
+            )
+            print(f"Total configurations: {len(anti_agent_percentages)}")
+            print(f"Runs per config: {runs_per_percentage}")
+            print(f"Total experiments: {len(tasks)}")
+            print("=" * 70)
+
+            # Collect results
+            cluster_results = defaultdict(list)
+            start = time.time()
+
+            try:
+                for anti_pct, max_cluster in run_pool_batches(
+                    tasks,
+                    _run_task6_config,
+                    processes=workers,
+                    maxtasksperchild=maxtasks,
+                    batch_size=batch_size,
+                    cooldown_seconds=cooldown,
+                    ctx="spawn",
+                    initializer=set_low_priority,
+                    unordered=True,
+                ):
+                    cluster_results[anti_pct].append(max_cluster)
+                    completed_runs += 1
+                    print(
+                        f"[{completed_runs}/{total_runs}] {anti_pct}% anti-agents → "
+                        f"max_cluster = {max_cluster}",
+                        flush=True,
+                    )
+
+                # Compute statistics
+                for anti_pct in anti_agent_percentages:
+                    clusters = cluster_results[anti_pct]
+                    if clusters:
+                        results.append(
+                            {
+                                "anti_agent_percentage": anti_pct,
+                                "max_cluster_sizes": clusters,
+                                "avg_max_cluster_size": float(np.mean(clusters)),
+                                "std_max_cluster_size": float(np.std(clusters)),
+                            }
+                        )
+
+                elapsed = time.time() - start
+                print(f"\n✓ Completed {completed_runs} runs in {elapsed / 60:.1f} min")
+
+            except KeyboardInterrupt:
+                print(
+                    f"\n\n✗ Interrupted by user after {completed_runs}/{total_runs} runs"
+                )
+                sys.exit(0)
+
+        else:
+            # Sequential version (original code)
+            try:
+                for anti_pct in anti_agent_percentages:
+                    max_cluster_runs = []
+                    print(f"\nAnti-agent percentage: {anti_pct}%")
+                    print("-" * 50)
+
+                    for run in range(runs_per_percentage):
+                        try:
+                            print(
+                                f"  Run {run + 1}/{runs_per_percentage}...",
+                                end=" ",
+                                flush=True,
+                            )
+
+                            cfg = deepcopy(config)
+                            cfg["rendering"] = t6.get("rendering", cfg["rendering"])
+                            cfg["max_timestep"] = t6.get(
+                                "max_timestep", cfg["max_timestep"]
+                            )
+                            cfg["save_trajectory"] = t6.get(
+                                "save_trajectory", cfg["save_trajectory"]
+                            )
+
+                            # Calculate number of anti-agents
+                            num_anti = int((anti_pct / 100.0) * cfg["number_of_agents"])
+
+                            # Create experiment
+                            exp = Experiment(
+                                cfg,
+                                [Task6Controller],
+                                [Task6Sensor],
+                                Task6Environment,
+                                Task6Agent,
+                            )
+
+                            # Mark anti-agents
+                            for i, agent in enumerate(exp.world.agentlist):
+                                if i < num_anti:
+                                    agent.is_anti_agent = True
+
+                            # Run experiment
+                            exp.run(rendering=0)
+
+                            # Analyze clustering
+                            metrics = compute_clustering_metrics(
+                                exp.world.agentlist, cluster_distance
+                            )
+                            max_cluster = metrics["max_cluster"]
+                            max_cluster_runs.append(max_cluster)
+
+                            print(f"max_cluster = {max_cluster}")
+                            completed_runs += 1
+
+                        except KeyboardInterrupt:
+                            print("\n  Interrupted during run")
+                            raise
+                        except Exception as e:
+                            print(f"\n  ✗ Error in run: {e}")
+                            import traceback
+
+                            traceback.print_exc()
+                            continue
+
+                    if max_cluster_runs:
+                        avg_max = float(np.mean(max_cluster_runs))
+                        std_max = float(np.std(max_cluster_runs))
+                        print(f"  Average: {avg_max:.2f} ± {std_max:.2f}")
+
+                        results.append(
+                            {
+                                "anti_agent_percentage": anti_pct,
+                                "max_cluster_sizes": max_cluster_runs,
+                                "avg_max_cluster_size": avg_max,
+                                "std_max_cluster_size": std_max,
+                            }
+                        )
+
+            except KeyboardInterrupt:
+                print(
+                    f"\n\n✗ Interrupted by user (Ctrl+C) after {completed_runs}/{total_runs} runs"
+                )
+                sys.exit(0)
+
+        # Generate plots and summary (common to both modes)
+        if results:
+            print("\n" + "=" * 70)
+            plot_task6_results(results)
+            plot_cluster_distribution(results)
+            print_task6_summary(results)
+            print("=" * 70)
+
+        print(f"\n✓ Task 6 completed: {completed_runs}/{total_runs} runs successful")

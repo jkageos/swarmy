@@ -8,26 +8,25 @@ max_timestep: 6000
 ## Multiprocessing (global safety knobs)
 ## ============================================================================
 multiprocessing:
-  max_cpu_utilization: 0.5     # Use up to 6 cores
-  max_workers: 6               # Hard cap at 6 workers (cores)
-  blas_threads: 1              # Keep BLAS single-threaded
-  maxtasksperchild: 5          # Recycle workers every 5 tasks
-  batch_size: 6                # 6 configs per batch
-  cooldown_seconds: 2.0        # Pause 2 seconds between batches
-
+  max_cpu_utilization: 0.5 # Use up to 6 cores
+  max_workers: 6 # Hard cap at 6 workers (cores)
+  blas_threads: 1 # Keep BLAS single-threaded
+  maxtasksperchild: 5 # Recycle workers every 5 tasks
+  batch_size: 6 # 6 configs per batch
+  cooldown_seconds: 2.0 # Pause 2 seconds between batches
 
 ## ============================================================================
 ## World parameters
 ## ============================================================================
-world_width: 1000
+world_width: 800
 world_height: 800
 background_color: [255, 255, 255]
 
 ## ============================================================================
 ## Robot parameters
 ## ============================================================================
-number_of_agents: 20
-default_velocity: 3
+number_of_agents: 50 # ↑ Larger swarm (more clustering opportunities)
+default_velocity: 2
 default_angle_velocity: 3
 save_trajectory: 0
 
@@ -43,11 +42,46 @@ controller_2: 0
 rendering: 1
 
 ## ============================================================================
-## Task 4.1: Swarm Aggregation (CONTROL GAINS STAY GLOBAL)
+## Task 3.1: Single Robot Behaviors (run controls only)
+## ============================================================================
+task31:
+  active: false
+  rendering: 1
+  max_timestep: 3000
+  save_trajectory: 1
+  controller: collision_avoidance # collision_avoidance | wall_follower | vacuum_cleaner | levy_flight
+
+## ============================================================================
+## Task 3.2: Potential Field Control (run controls + controller params)
+## ============================================================================
+task32:
+  active: false
+  rendering: 1
+  max_timestep: 2000
+  save_trajectory: 0
+  controller: direct_gradient # direct_gradient | indirect_gradient
+  # Controller parameters (used by both controllers)
+  dt: 1.0
+  # DirectGradient
+  direct_velocity_scale: 5000.0
+  direct_max_velocity: 10.0
+  # IndirectGradient
+  indirect_c: 0.95
+  indirect_acceleration_scale: 1000.0
+  indirect_max_velocity: 10.0
+
+## ============================================================================
+## Task 4.1: Swarm Aggregation
 ## ============================================================================
 proximity_range: 80
 aggregation_waiting_time: 80
 aggregation_cooldown: 40
+
+task41:
+  active: false
+  rendering: 1
+  max_timestep: 4000
+  save_trajectory: 0
 
 ## ============================================================================
 ## Task 4.2: Reynolds Flocking (Toroidal Space) (CONTROL GAINS STAY GLOBAL)
@@ -63,44 +97,6 @@ heading_noise: 0.0
 max_sensing_radius: 120.0
 min_separation_distance: 35.0
 show_velocity: False
-
-## ============================================================================
-## Task 3.1: Single Robot Behaviors (run controls only)
-## ============================================================================
-task31:
-  active: false
-  rendering: 1
-  max_timestep: 3000
-  save_trajectory: 1
-  controller: collision_avoidance  # collision_avoidance | wall_follower | vacuum_cleaner | levy_flight
-
-## ============================================================================
-## Task 3.2: Potential Field Control (run controls + controller params)
-## ============================================================================
-task32:
-  active: false
-  rendering: 1
-  max_timestep: 2000
-  save_trajectory: 0
-  controller: direct_gradient       # direct_gradient | indirect_gradient
-  # Controller parameters (used by both controllers)
-  dt: 1.0
-  # DirectGradient
-  direct_velocity_scale: 5000.0
-  direct_max_velocity: 10.0
-  # IndirectGradient
-  indirect_c: 0.95
-  indirect_acceleration_scale: 1000.0
-  indirect_max_velocity: 10.0
-
-## ============================================================================
-## Task 4.1: Swarm Aggregation (run controls only)
-## ============================================================================
-task41:
-  active: false
-  rendering: 1
-  max_timestep: 4000
-  save_trajectory: 0
 
 ## ============================================================================
 ## Task 4.2a: Flocking (run controls only)
@@ -126,7 +122,7 @@ task42b:
 ## Task 5.2: Local Sampling in a Swarm (run controls + sweep params)
 ## ============================================================================
 task52:
-  active: true
+  active: false
   swarm_sizes: [2, 5, 10, 20, 50, 100, 150, 200]
   sensor_ranges: [0.02, 0.05, 0.10, 0.20, 0.30, 0.40, 0.50]
   experiments_per_config: 1000
@@ -134,7 +130,26 @@ task52:
   max_timestep: 1
   save_trajectory: 0
   FPS: 10000
-  
+
   # Data persistence
-  use_cached_data: true           # Set to true to skip experiments and use cached data
-  data_file: "task52_results.pkl"  # Filename for saved results
+  use_cached_data: true # Set to true to skip experiments and use cached data
+  data_file: "task52_results.pkl" # Filename for saved results
+
+## ============================================================================
+## Task 6: Swarm Aggregation with Anti-Agents
+## ============================================================================
+task6_aggregation_range: 72 # ↑ INCREASE from 68 (strengthen baseline more)
+task6_attraction_probability: 0.195 # ↑ INCREASE from 0.175 (more likely to aggregate)
+task6_random_walk_probability: 0.1
+task6_anti_agent_comm_range: 150 # ↓ DECREASE from 180 (weaker anti-agent reach)
+task6_anti_agent_leave_threshold: 3 # ↑ INCREASE from 2 (pickier about disruption)
+
+task6:
+  active: true
+  rendering: 0
+  max_timestep: 3500
+  save_trajectory: 0
+  use_multiprocessing: true
+  anti_agent_percentages: [0, 2, 5, 10, 15, 20, 30]
+  runs_per_percentage: 50
+  cluster_distance: 100
